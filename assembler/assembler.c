@@ -7,6 +7,7 @@
 
 #include "../common/opCode.h"
 #include "assembler.h"
+#include "errCode.h"
 
 
 
@@ -126,10 +127,10 @@ void readMneumonic(char** ppSrcCode, char* pmneumonic)
 	}
 }
 
-int readLabelName(char** ppSrcCode, char* pLabelName)
+int getSting(char** ppSrcCode, char* pdest)
 {
-	char* p = pLabelName;
-	memset(pLabelName, '\0', MAX_LABEL_LEN);
+	char* p = pdest;
+	memset(pdest, '\0', MAX_LABEL_LEN);
 
 	while(ISLETTER(**ppSrcCode))
 	{
@@ -137,22 +138,28 @@ int readLabelName(char** ppSrcCode, char* pLabelName)
 		(*ppSrcCode)++;
 	}
 
-	return p - pLabelName;
+	return p - pdest;
 
 }
 
 Label* initLabel(char* pLabelName, int len, int addr)
 {
 	Label* pLabel = (Label* )malloc(sizeof(Label));
-	char* p = (char* )malloc(len + 1);
+	char* p = NULL;
 
-	if((pLabel != NULL) && (pLabelName != NULL))
+	//if((pLabel != NULL) && (pLabelName != NULL))
+	if(pLabel != NULL)
 	{
-		//including the terminating null byte('\0')
-		strcpy(p, pLabelName);
+		if(pLabelName != NULL)
+		{
+			p = (char* )malloc(len + 1);
+			//including the terminating null byte('\0')
+			strcpy(p, pLabelName);
+		}
 
 		pLabel->pLabelName = p;
 		pLabel->addr = addr;
+		pLabel->argc = 0;
 		pLabel->next = NULL;
 	}
 	else 
@@ -161,10 +168,45 @@ Label* initLabel(char* pLabelName, int len, int addr)
 		//under linux enviroment, while ptr is NULL, no operation is performed
 		free(pLabel);
 		free(p);
+		pLabel = NULL;
+		p = NULL;
 	}
 
 	return pLabel;
 }
+
+static void freeLabel(Label* pLabel)
+{
+	assert(pLabel != NULL);
+
+	free(pLabel->pLabelName);
+	free(pLabel);
+
+}
+
+// TODO implement this method as a common macro
+void freeLabels(Label* pLabels)
+{
+	Label* pLabel = NULL;
+	Label* ptmp = NULL;
+	assert(pLabels);
+
+	pLabel = pLabels->next;
+	while(pLabel != NULL)
+	{
+		ptmp = pLabel->next;
+		freeLabel(pLabel);
+		pLabel = ptmp;
+	}
+
+	if(pLabel != NULL)
+	{
+		freeLabel(pLabel);
+	}
+	
+}
+
+
 CallINS* initCallINS(int fromAddr, char* pTargetLabelName, int len)
 {
 	CallINS* pCallINS = (CallINS* )malloc(sizeof(CallINS));
@@ -185,14 +227,111 @@ CallINS* initCallINS(int fromAddr, char* pTargetLabelName, int len)
 		//TODO logs
 		free(pCallINS);
 		free(p);
+		pCallINS = NULL;
+		p = NULL;
 		printf("initCallINS error\n");
 	}
 	return pCallINS;
 }
 
+static void freeCallINS(CallINS* pCallINS)
+{
+	assert(pCallINS != NULL);
+
+	free(pCallINS->targetLabelName);
+	free(pCallINS);
+}
+
+void freeCallINSs(CallINS* pCallINSs)
+{
+	CallINS* pCallINS = NULL;
+	CallINS* ptmp = NULL;
+	assert(pCallINSs);
+
+	pCallINS = pCallINSs->next;
+	while(pCallINS != NULL)
+	{
+		ptmp = pCallINS->next;
+		freeCallINS(pCallINS);
+		pCallINS = ptmp;
+	}
+
+	if(pCallINS != NULL)
+	{
+		freeCallINS(pCallINS);
+	}
+	
+}
+
+Var* initVar(int type, char* pVarName, int len)
+{
+	Var* pVar = (Var* )malloc(sizeof(Var));
+	char* p = NULL;
+
+	if(pVar != NULL)
+	{
+		if(pVarName != NULL)
+		{
+			p = (char* )malloc(len + 1);
+			strcpy(p, pVarName);
+		}
+		pVar->type = type;
+		pVar->pName = p;
+		pVar->next = NULL;
+	}
+	else
+	{
+		free(pVar);
+		free(p);
+		pVar = NULL;
+	}
+
+	return pVar;
+}
+
+static void freeVar(Var* pVar)
+{
+	assert(pVar != NULL);
+
+	free(pVar->pName);
+	free(pVar);
+}
+
+void freeVars(Var* pVars)
+{
+	Var* pVar = NULL;
+	Var* ptmp = NULL;
+	assert(pVars);
+
+	pVar = pVars->next;
+	while(pVar != NULL)
+	{
+		ptmp = pVar->next;
+		freeVar(pVar);
+		pVar = ptmp;
+	}
+
+	freeVar(pVar);
+	
+}
+
+int addVar(Var* pVars, Var* pVar)
+{
+	assert((pVars != NULL) && (pVar != NULL));
+	
+	while(pVars->next != NULL)
+	{
+		pVars = pVars->next;
+	}
+	pVars->next = pVar;
+	pVars->next->next = NULL; // actually, we do not need this line
+
+	return 0;
+
+}
 int addLabel(Label* pLabels, Label* pLabel)
 {
-	assert(pLabels != NULL && (pLabel != NULL));
+	assert((pLabels != NULL) && (pLabel != NULL));
 
 	while(pLabels->next != NULL)
 	{
@@ -237,9 +376,32 @@ int findCallINSLabelAddr(CallINS* pCallINS, Label* pLabels)
 	return -1;
 }
 
+int haveDefined(Var* pVars, char* pVarName)
+{
+	Var* pVar = NULL;
+	int ret = 0;
+	assert((pVars != NULL) && (pVarName != NULL));
+	pVar = pVars->next;
+	while(pVar != NULL)
+	{
+		if(strcmp(pVar->pName, pVarName) == 0)
+		{
+			ret = 1;
+			break;
+		}
+		else
+		{
+			pVar = pVar->next;
+		}
+
+	}
+
+	return ret;
+}
+
 
 //pTargetCode: pointer to the targetCode, which is now store in a char buffer
-void updateCallINSsLabelAddr(char* pTargetCode, CallINS* pCallINSs, Label* pLabels)
+void updateCallINSsLabelAddr(char* pTargetByteCodeStart, CallINS* pCallINSs, Label* pLabels)
 {
 	CallINS* pCallINS;
 	int addr = -1;
@@ -255,41 +417,58 @@ void updateCallINSsLabelAddr(char* pTargetCode, CallINS* pCallINSs, Label* pLabe
 		{
 			//TODO & CAUTION
 			// little endian or big endian
-			*(int* )(pTargetCode + pCallINS->fromAddr) = addr;
+			*(int* )(pTargetByteCodeStart + pCallINS->fromAddr) = addr;
 		}
 
 	}
 
 }
 
-int parse(char* pSrcCode, char* pTargetBin)
+void updateLabelsArgc(char* pTargetByteCodeStart, Label* pLabels)
+{
+	Label* pLabel = pLabels->next;
+	
+	while(pLabel != NULL)
+	{
+		*(pTargetByteCodeStart + pLabel->addr) = (char)(pLabel->argc);
+		pLabel = pLabel->next;
+	}
+
+}
+
+int parse(char* pSrcCode, char* ptargetByteCode)
 {
 	char mneumonic[MAX_INS_LEN];
 	char labelName[MAX_LABEL_LEN];
-	char* pTargetBinStart = pTargetBin;
+	char varName[MAX_VAR_LEN];
+	char* ptargetByteCodeStart = ptargetByteCode;
 
 	int labelNameLen;
+	int varNameLen;
 
-	Label *pLabel = NULL;
+	Label* pLabel = NULL;
 	CallINS* pCallINS = NULL;
+	Var* pVar = NULL;
 
-	Label *pLabels = initLabel(NULL, 0, 0);
+	Label* pLabels = initLabel(NULL, 0, 0);
 	CallINS* pCallINSs = initCallINS(0, NULL, 0);
+	Var* pVars = initVar(0, NULL, 0);
 
 
-	*pTargetBin ++ = 'B';
-	*pTargetBin ++ = '3';
-	*pTargetBin ++ = '2';
+	*ptargetByteCode ++ = 'B';
+	*ptargetByteCode ++ = '3';
+	*ptargetByteCode ++ = '2';
 
 	while(*pSrcCode != '\0')
 	{
 		//is label?
 		if(ISLETTER(*pSrcCode))
 		{
-			labelNameLen = readLabelName(&pSrcCode, labelName);
-			pLabel = initLabel(labelName, labelNameLen, pTargetBin - pTargetBinStart);
+			labelNameLen = getSting(&pSrcCode, labelName);
+			pLabel = initLabel(labelName, labelNameLen, ptargetByteCode - ptargetByteCodeStart);
 			addLabel(pLabels, pLabel);
 
+			ptargetByteCode ++;//use the first byte of the method to store the number of arguments of the method
 			moveToNextLine(&pSrcCode);
 		}
 		else
@@ -300,56 +479,75 @@ int parse(char* pSrcCode, char* pTargetBin)
 			//TODO parse mneumonic
 			if(!strcasecmp(mneumonic, "NOP"))
 			{
-				*pTargetBin++ = (char)NOP;
+				*ptargetByteCode++ = (char)NOP;
 			}
 			else if(!strcasecmp(mneumonic, "PUSH"))
 			{
-				*pTargetBin++ = (char)PUSH;
+				*ptargetByteCode++ = (char)PUSH;
 			}
 			else if(!strcasecmp(mneumonic, "POP"))
 			{
-				*pTargetBin++ = (char)POP;
+				*ptargetByteCode++ = (char)POP;
 			}
 			else if(!strcasecmp(mneumonic, "ICONST"))
 			{
 				int value = 0;
-				*pTargetBin++ = (char)ICONST;
+				*ptargetByteCode++ = (char)ICONST;
 				eatWhiteSpaces(&pSrcCode);
 				value = readDWordValue(&pSrcCode);
 
-				//*((int* )pTargetBin) = value;
-				*pTargetBin ++ = (char)value;
-				*pTargetBin ++ = (char)(value >> 8);
-				*pTargetBin ++ = (char)(value >> 16);
-				*pTargetBin ++ = (char)(value >> 24);
+				//*((int* )ptargetByteCode) = value;
+				*ptargetByteCode ++ = (char)value;
+				*ptargetByteCode ++ = (char)(value >> 8);
+				*ptargetByteCode ++ = (char)(value >> 16);
+				*ptargetByteCode ++ = (char)(value >> 24);
 
 
-				//pTargetBin += 4;
+				//ptargetByteCode += 4;
 			}
 			else if(!strcasecmp(mneumonic, "ADD"))
 			{
-				*pTargetBin++ = (char)ADD;
+				*ptargetByteCode++ = (char)ADD;
 			}
 			else if(!strcasecmp(mneumonic, "RET_V"))
 			{
-				*pTargetBin++ = (char)RET_V;
+				*ptargetByteCode++ = (char)RET_V;
 			}
 			else if(!strcasecmp(mneumonic, "RET_I"))
 			{
-				*pTargetBin++ = (char)RET_I;
+				*ptargetByteCode++ = (char)RET_I;
 			}
 			else if(!strcasecmp(mneumonic, "CALL"))
 			{
-				*pTargetBin++ = (char)CALL;
+				*ptargetByteCode++ = (char)CALL;
 
 				eatWhiteSpaces(&pSrcCode);
-				labelNameLen = readLabelName(&pSrcCode, labelName);
-				pCallINS = initCallINS(pTargetBin - pTargetBinStart, labelName, labelNameLen);
+				labelNameLen = getSting(&pSrcCode, labelName);
+				pCallINS = initCallINS(ptargetByteCode - ptargetByteCodeStart, labelName, labelNameLen);
 				addCallINS(pCallINSs, pCallINS);
 
-				pTargetBin += 4; // to store the called function's addr
+				ptargetByteCode += 4; // to store the called function's addr
 
 
+			}
+			else if(!strcasecmp(mneumonic, "INT"))
+			{
+				eatWhiteSpaces(&pSrcCode);
+				varNameLen = getSting(&pSrcCode, varName);
+				if(!haveDefined(pVars, varName))
+				{
+					++(pLabel->argc);
+					pVar = initVar(0, varName, varNameLen);
+					addVar(pVars, pVar);
+					printf("define %s\n", varName);
+
+					memset(varName, '\0', MAX_VAR_LEN);
+				}
+				else
+				{
+					printf("error: %s has been defined\n", varName);
+					return HAVE_DEFINED;
+				}
 			}
 
 
@@ -358,9 +556,13 @@ int parse(char* pSrcCode, char* pTargetBin)
 		}
 	}
 
-	updateCallINSsLabelAddr(pTargetBinStart, pCallINSs, pLabels);
+	updateCallINSsLabelAddr(ptargetByteCodeStart, pCallINSs, pLabels);
+	updateLabelsArgc(ptargetByteCodeStart, pLabels);
 
-	return pTargetBin - pTargetBinStart;
+	freeLabels(pLabels);
+	freeCallINSs(pCallINSs);
+
+	return ptargetByteCode - ptargetByteCodeStart;
 }
 
 void help()
@@ -371,43 +573,64 @@ void help()
 int main(int argc, char** argv)
 {
 	char* pSrcCode;
-	char targetBin[MAX_FILE_LENGTH];
-	int targetBinLen = -1;
+	char* pSrcFilePath;
+	char* pTargetFilePath;
+	char targetByteCode[MAX_FILE_LENGTH];
+	int targetByteCodeLen = -1;
 	int fd = -1;
 	int ret = -1;
 
+	char* tmp = "./test.b32";
+	char* tmp1 = "./test.bbc";
+
+#if (DEBUG_LEVEL > 0)
+	pSrcFilePath = "./test.b32";
+	pTargetFilePath = "./test.bbc";
+#else
+	pSrcFilePath = *(argv + 1);
+	pTargetFilePath = *(argv + 2);
+
+#endif
+
 	//tmp
-	char* p = targetBin;
+	char* p = targetByteCode;
 	int i = 0;
 
+#if (DEBUG_LEVEL > 0)
+	if(argc < 0)
+#else
 	if(argc != 3)
+#endif
 	{
 		help();
 	}
 	else
 	{
-		pSrcCode = loadSourceFile(*(argv + 1));
-		memset(targetBin, '\0', MAX_FILE_LENGTH);
-		targetBinLen = parse(pSrcCode, targetBin);
+		pSrcCode = loadSourceFile(pSrcFilePath);
+		memset(targetByteCode, '\0', MAX_FILE_LENGTH);
+		targetByteCodeLen = parse(pSrcCode, targetByteCode);
 
-		fd = open(*(argv + 2), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-		
-		if(fd > 0)
+		if(targetByteCodeLen > 0)
 		{
-			write(fd, targetBin, targetBinLen);
-			close(fd);
-			ret = 0;
-		}
-		else
-		{
-			ret = -2;
+			fd = open(pTargetFilePath, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+			
+			if(fd > 0)
+			{
+				write(fd, targetByteCode, targetByteCodeLen);
+				close(fd);
+				ret = 0;
+			}
+			else
+			{
+				ret = -2;
+			}
 		}
 
 	}
 
 
 
-	for(i = 0; i < targetBinLen; i++)
+	for(i = 0; i < targetByteCodeLen; i++)
 	{
 		printf(" %x", *p);
 		p++;

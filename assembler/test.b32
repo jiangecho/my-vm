@@ -1,0 +1,18 @@
+Start
+	ICONST	100
+	ICONST	200
+	INT		abc
+	INT		bc
+	INT		c
+	ISTORE	abc
+	ADD
+	RET_I
+
+fun
+	INT AA
+	INT BB
+	ICONST	100
+	ICONST	100
+	ADD
+	RET_I
+

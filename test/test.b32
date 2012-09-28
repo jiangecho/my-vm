@@ -1,0 +1,11 @@
+Start
+	ICONST 100
+	ICONST 200
+	CALL Fun
+	RET_I
+
+Fun
+	ICONST 50
+	ICONST 90
+	ADD
+	RET_I

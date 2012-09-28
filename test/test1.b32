@@ -1,0 +1,5 @@
+Start
+	ICONST -50
+	ICONST -80
+	ADD
+	RET_I

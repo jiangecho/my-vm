@@ -22,25 +22,37 @@ void storeDWordTo(char* p, int value)
 
 int loadDWordFrom(char* p)
 {
-	int value =   (((int)(*(--p)) << 24) & 0xFF000000)
-				| (((int)(*(--p)) << 16) & 0x00FF0000)
-				| (((int)(*(--p)) << 8)  & 0x0000FF00)
-				| ((int)(*(--p)) & 0x000000FF);
+//	int a, b, c, d;
+//	a = ((int)(*(p++)))             & 0x000000FF;
+//	b = ((int)(*(p++)) << 8)        & 0x0000FF00;
+//	c = ((int)(*(p++)) << 16)       & 0x00FF0000;
+//	d = ((int)(*(p++)) << 24)       & 0xFF000000;
+//	return a | b | c | d;
+
+	int value = 0;
+	--p;
+	//Attention: if you use p++, there is an issue here
+	value =   (((int)(*(++p)))       & 0x000000FF) 
+				| (((int)(*(++p)) << 8)  & 0x0000FF00) 
+				| (((int)(*(++p)) << 16) & 0x00FF0000) 
+				| (((int)(*(++p)) << 24) & 0xFF000000);
 
 	return value;
 }
 
 int loadWordFrom(char* p)
 {
-	int value = (((int)(*(--p)) << 8)  & 0x0000FF00)
-				| ((int)(*(--p)) & 0x000000FF);
+	int value = 0;
+	--p;
+	value = (((int)(*(++p)))  & 0x00000000)
+				| ((int)(*(++p)) & 0x0000FF00);
 
 	return value;
 }
 
 int loadByteFrom(char* p)
 {
-	int value = ((int)(*(--p)) & 0x000000FF);
+	int value = ((int)(*p) & 0x000000FF);
 
 	return value;
 }
@@ -88,6 +100,7 @@ int popFrame(int argc)
 void pushI(int value)
 {
 	storeDWordTo(gpStackTop, value);
+	gpStackTop += 4;
 //	*gpStackTop ++ = (char)value;
 //	*gpStackTop ++ = (char)(value >> 8);
 //	*gpStackTop ++ = (char)(value >> 16);
@@ -101,6 +114,7 @@ int popI()
 //				| (((int)(*(--gpStackTop)) << 8)  & 0x0000FF00)
 //				| ((int)(*(--gpStackTop)) & 0x000000FF);
 //	return value;
+	gpStackTop -= 4;
 
 	return loadDWordFrom(gpStackTop);
 }

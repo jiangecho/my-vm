@@ -4,6 +4,9 @@
 #define MAX_STACK_SIZE 10000
 #define SIZE_OF_ARGs(argc) ((argc) * sizeof(int))
 
+#define DWORD_SIZE 4
+#define BYTE_SIZE 1
+
 struct frame{
 	char* PC;
 	struct frame* pPreFrame;

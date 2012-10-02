@@ -10,7 +10,6 @@
 
 
 char* gpStackTop;
-char* gpStack;
 char* gpStackBottom;
 char* gpPC;
 char* gpBCStart;
@@ -54,7 +53,7 @@ char* loadByteCode(char* pPath)
 int initVm(int stackSize)
 {
 	int ret = -1;
-	char* p = NULL;
+	struct stack* p = NULL;
 	if(stackSize <= 0)
 	{
 		ret = -1;
@@ -67,12 +66,14 @@ int initVm(int stackSize)
 		p = initStack(stackSize);
 		if(p != NULL)
 		{
-			gpStackBottom = p;
-			gpStackTop = p;
+			gpStackBottom = p->pStackBottom;
+			gpStackTop = p->pStackTop;
 
 			if(pushFrame(sargc) == 0)
 			{
-				gpCurFrame = (struct frame* )p;
+				//TODO the main method does not have any arguments
+				//gpCurFrame = (struct frame* )p;
+				gpCurFrame = p->pCurFrame;
 				ret = 0;
 			}
 

@@ -105,9 +105,10 @@ int popI()
 	return loadDWordFrom(gpStackTop);
 }
 
-char* initStack(int stackSize)
+struct stack* initStack(int stackSize)
 {
 	char* p = NULL;
+	struct stack* pStack = NULL;
 	assert(stackSize > 0);
 	sstackSize = (stackSize > MAX_STACK_SIZE) ?  MAX_STACK_SIZE : stackSize;
 
@@ -116,9 +117,23 @@ char* initStack(int stackSize)
 	if(p != NULL)
 	{
 		memset(p, '\0', sstackSize);
+		pStack = (struct stack* )malloc(sizeof(struct stack));
+
+		if(pStack != NULL)
+		{
+			pStack->pStackTop = p;
+			pStack->pStackBottom = p;
+			pStack->pStack = p;
+			pStack->pCurFrame = (struct frame* )p;
+		}
+		else
+		{
+			free(p);
+			p = NULL;
+		}
 	}
 
-	return p;
+	return pStack;
 }
 
 void destroyStack(char* pStackBottom)

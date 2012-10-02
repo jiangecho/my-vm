@@ -9,6 +9,14 @@ struct frame{
 	struct frame* pPreFrame;
 };
 
+typedef struct stack{
+	char* pStackTop;
+	char* pStackBottom;
+	char* pStack;
+	struct frame* pCurFrame;
+
+}Stack;
+
 // return the current Fp
 int pushFrame(int argc);
 int popFrame(int argc);
@@ -22,7 +30,7 @@ int popI();
 int loadI(int index);
 void storeI(int index, int value);
 
-char* initStack(int stackSize);
+struct stack* initStack(int stackSize);
 void destroyStack(char* pStackBottom);
 
 #endif

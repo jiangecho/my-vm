@@ -12,8 +12,40 @@ extern char* gpPC;
 
 static int sstackSize;
 
+void storeDWordTo(char* p, int value)
+{
+	*p ++ = (char)value;
+	*p ++ = (char)(value >> 8);
+	*p ++ = (char)(value >> 16);
+	*p ++ = (char)(value >> 24);
+}
+
+int loadDWordFrom(char* p)
+{
+	int value =   (((int)(*(--p)) << 24) & 0xFF000000)
+				| (((int)(*(--p)) << 16) & 0x00FF0000)
+				| (((int)(*(--p)) << 8)  & 0x0000FF00)
+				| ((int)(*(--p)) & 0x000000FF);
+
+	return value;
+}
+
+int loadWordFrom(char* p)
+{
+	int value = (((int)(*(--p)) << 8)  & 0x0000FF00)
+				| ((int)(*(--p)) & 0x000000FF);
+
+	return value;
+}
+
+int loadByteFrom(char* p)
+{
+	int value = ((int)(*(--p)) & 0x000000FF);
+
+	return value;
+}
 // return the current Fp
-int pushFrame()
+int pushFrame(int argc)
 {
 	struct frame* pFrame;
 
@@ -24,6 +56,8 @@ int pushFrame()
 		printf("stack over follow\n");
 		return -1;
 	}
+
+	gpStackTop += SIZE_OF_ARGs(argc);
 
 	pFrame = (struct frame* )gpStackTop;
 	pFrame->PC = gpPC;
@@ -36,10 +70,11 @@ int pushFrame()
 
 }
 
-int popFrame()
+int popFrame(int argc)
 {
 	int ret = -1;
 	gpStackTop = (char* )gpCurFrame;
+	gpStackTop -= SIZE_OF_ARGs(argc);
 	if(gpStackTop > gpStackBottom)
 	{
 		gpPC = gpCurFrame->PC;
@@ -52,20 +87,22 @@ int popFrame()
 
 void pushI(int value)
 {
-	*gpStackTop ++ = (char)value;
-	*gpStackTop ++ = (char)(value >> 8);
-	*gpStackTop ++ = (char)(value >> 16);
-	*gpStackTop ++ = (char)(value >> 24);
+	storeDWordTo(gpStackTop, value);
+//	*gpStackTop ++ = (char)value;
+//	*gpStackTop ++ = (char)(value >> 8);
+//	*gpStackTop ++ = (char)(value >> 16);
+//	*gpStackTop ++ = (char)(value >> 24);
 }
 
 int popI()
 {
-	int value =   (((int)(*(--gpStackTop)) << 24) & 0xFF000000)
-				| (((int)(*(--gpStackTop)) << 16) & 0x00FF0000)
-				| (((int)(*(--gpStackTop)) << 8)  & 0x0000FF00)
-				| ((int)(*(--gpStackTop)) & 0x000000FF);
+//	int value =   (((int)(*(--gpStackTop)) << 24) & 0xFF000000)
+//				| (((int)(*(--gpStackTop)) << 16) & 0x00FF0000)
+//				| (((int)(*(--gpStackTop)) << 8)  & 0x0000FF00)
+//				| ((int)(*(--gpStackTop)) & 0x000000FF);
+//	return value;
 
-	return value;
+	return loadDWordFrom(gpStackTop);
 }
 
 char* initStack(int stackSize)
@@ -87,6 +124,21 @@ char* initStack(int stackSize)
 void destroyStack(char* pStackBottom)
 {
 	free(pStackBottom);
+}
+
+int loadI(int index)
+{
+	// the index starts from 0
+	char* p2ArgsArea = (char* )gpCurFrame - SIZE_OF_ARGs(index + 1);
+	return loadDWordFrom(p2ArgsArea);
+
+
+}
+
+void storeI(int index, int value)
+{
+	char* p2ArgsArea = (char* )gpCurFrame - SIZE_OF_ARGs(index + 1);
+	storeDWordTo(p2ArgsArea, value);
 }
 
 //int main()

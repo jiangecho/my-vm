@@ -70,6 +70,8 @@ void start(struct thread* pthread)
 			gpStackTop = pthread->pStack->pStackTop;
 			gpStackBottom = pthread->pStack->pStackBottom;
 			gpCurFrame = pthread->pStack->pCurFrame;
+
+			p->status = RUNNING;
 			break;
 		}
 		else
@@ -91,6 +93,34 @@ static void removeThread(struct thread* pthread)
 }
 static struct thread* self()
 {
+	return pCurrentThread;
 
 }
 
+void stop(struct thread* pthread);
+
+void suspend(struct thread* pthread)
+{
+
+}
+void resume(struct thread* pthread)
+{
+
+}
+
+struct thread* getNextReadyThread()
+{
+	struct thread* p = pCurrentThread->next;
+
+	while(p != pCurrentThread)
+	{
+		if(p->status == READY)
+		{
+			return p;
+		}
+		else
+		{
+			p = p->next;
+		}
+	}
+}

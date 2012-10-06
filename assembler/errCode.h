@@ -1,1 +1,2 @@
-#define HAVE_DEFINED	-5
+#define HAVE_DEFINED		-5
+#define HAVE_NOT_DEFINED	-6

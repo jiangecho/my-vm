@@ -10,12 +10,11 @@
 
 
 char* gpStackTop;
-char* gpStack;
 char* gpStackBottom;
 char* gpPC;
 char* gpBCStart;
 struct frame* gpCurFrame;
-
+static int sargc;
 
 char* loadByteCode(char* pPath)
 {
@@ -50,45 +49,31 @@ char* loadByteCode(char* pPath)
 	return p;
 }
 
-int getDWordValue(char* pPC)
-{
-	int value = (int)(*(pPC))
-				| ((int)(*(pPC + 1)) << 8)
-				| ((int)(*(pPC + 2)) << 16)
-				| ((int)(*(pPC + 3)) << 24);
-
-	return value;
-
-
-}
-short getWordValue(char* pPC)
-{
-	short value = (short)(*(pPC))
-				| ((short)(*(pPC + 1)) << 8);
-
-	return value;
-
-}
 
 int initVm(int stackSize)
 {
 	int ret = -1;
-	char* p = NULL;
+	struct stack* p = NULL;
 	if(stackSize <= 0)
 	{
 		ret = -1;
 	}
 	else
 	{
+		//TODO now the main method do not support any args.
+		sargc = 0;
 		stackSize = (stackSize > MAX_STACK_SIZE) ? MAX_STACK_SIZE : stackSize;
 		p = initStack(stackSize);
 		if(p != NULL)
 		{
-			gpStackBottom = p;
-			gpStackTop = p;
-			if(pushFrame() == 0)
+			gpStackBottom = p->pStackBottom;
+			gpStackTop = p->pStackTop;
+
+			if(pushFrame(sargc) == 0)
 			{
-				gpCurFrame = (struct frame* )p;
+				//TODO the main method does not have any arguments
+				//gpCurFrame = (struct frame* )p;
+				gpCurFrame = p->pCurFrame;
 				ret = 0;
 			}
 
@@ -145,7 +130,7 @@ case ICONST:
 	}
 
 	break;
-case POP:
+case NOP:
 	//gpPC ++;
 	break;
 
@@ -163,19 +148,22 @@ case ADD:
 
 case CALL:
 	{
-		int targetAddr = getDWordValue(gpPC);
+		int targetAddr = loadDWordFrom(gpPC);
 
 		gpPC += 4;
-		pushFrame();
+		//now, the first byte of one method is the count of arguments.
+		sargc = (int)(*(gpBCStart + targetAddr));
+		pushFrame(sargc);
 		//TODO there is something wrong here
 		gpPC = gpBCStart + targetAddr;
 	}
 	break;
 case RET_V:
-	if(popFrame() < 0)
+	if(popFrame(sargc) < 0)
 	{
 		gameOver = 1;
 	}
+	sargc = 0;
 	break;
 
 case RET_I:
@@ -183,7 +171,7 @@ case RET_I:
 		int value = popI();
 		printf("RET_I:%d\n", value);
 
-		if(popFrame() < 0)
+		if(popFrame(sargc) < 0)
 		{
 			gameOver = 1;
 		}
@@ -192,9 +180,29 @@ case RET_I:
 			pushI(value);
 		}
 
+		sargc = 0;
 	}
 	break;
 
+case ISTORE:
+	{
+		int index = loadByteFrom(gpPC);
+		int value = popI();
+		storeI(index, value);
+
+	}
+
+	break;
+
+case ILOAD:
+	{
+		int index = loadByteFrom(gpPC);
+		int value = loadI(index);
+		pushI(value);
+
+	}
+
+	break;
 default:
 	break;
 		}

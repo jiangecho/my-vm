@@ -59,27 +59,28 @@ struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char
 	return p;
 }
 
-void start(struct thread* pthread)
+int start(struct thread* pthread)
 {
-	struct thread* p = pCurrentThread;
-	do{
-		if(pthread == p)
-		{
-			//TODO
-			gpPC = pthread->PC;
-			gpStackTop = pthread->pStack->pStackTop;
-			gpStackBottom = pthread->pStack->pStackBottom;
-			gpCurFrame = pthread->pStack->pCurFrame;
+	int ret = -1;
+	if(pthread != pCurrentThread)
+	{
+		//TODO
+		gpPC = pthread->PC;
+		gpStackTop = pthread->pStack->pStackTop;
+		gpStackBottom = pthread->pStack->pStackBottom;
+		gpCurFrame = pthread->pStack->pCurFrame;
 
-			p->status = RUNNING;
-			break;
-		}
-		else
-		{
-			p = p->next;
-		}
+		pthread->status = RUNNING;
+
+		ret = 0;
 	}
-	while(p != pCurrentThread);
+	else
+	{
+		ret = -1;
+		printf("thread %s is runing\n" ,pthread->pName);
+	}
+
+	return ret;
 }
 
 static void addThread(struct thread* pthread)
@@ -91,13 +92,28 @@ static void removeThread(struct thread* pthread)
 {
 
 }
+
 static struct thread* self()
 {
 	return pCurrentThread;
 
 }
 
-void stop(struct thread* pthread);
+void stop(struct thread* pthread)
+{
+	assert(pthread != NULL);
+	
+	if(pthread != pCurrentThread)
+	{
+	}
+
+
+}
+
+void stopSelf()
+{
+
+}
 
 void suspend(struct thread* pthread)
 {
@@ -111,16 +127,63 @@ void resume(struct thread* pthread)
 struct thread* getNextReadyThread()
 {
 	struct thread* p = pCurrentThread->next;
+	struct thread* pRet = NULL;
 
 	while(p != pCurrentThread)
 	{
 		if(p->status == READY)
 		{
-			return p;
+			pRet = p;
+			break;
 		}
 		else
 		{
 			p = p->next;
 		}
 	}
+
+	return pRet;
+}
+
+int switchToNextThread()
+{
+	int ret = -1;
+	struct thread* p = getNextReadyThread();
+
+	if((p != NULL) && (p != pCurrentThread))
+	{
+		gpPC = p->PC;
+		gpStackTop = p->pStack->pStackTop;
+		gpStackBottom = p->pStack->pStackBottom;
+		gpCurFrame = p->pStack->pCurFrame;
+
+		
+		pCurrentThread->status = READY;
+		pCurrentThread = p;
+		pCurrentThread->status = RUNNING; 
+
+		ret = 0;
+	}
+	else
+	{
+		ret = -1;
+		printf("swtich thread error\n");
+	}
+
+	return ret;
+
+}
+
+//TODO should remove the destroyed pthread from the theadlist
+static void destroy(struct thread* pthread)
+{
+	assert(pthread != NULL);
+
+
+	if(pthread->pName != NULL)
+	{
+		//TODO maybe I need to implement this function in a method
+		free(pthread->pName);
+	}
+	destroyStack(pthread->pStack->pStackBottom);
 }

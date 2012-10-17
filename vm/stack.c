@@ -75,6 +75,7 @@ int pushFrame(int argc)
 
 	pFrame = (struct frame* )gpStackTop;
 	pFrame->PC = gpPC;
+	pFrame->argc = argc;
 	pFrame->pPreFrame = gpCurFrame;
 
 	gpStackTop += sizeof(struct frame);
@@ -84,15 +85,17 @@ int pushFrame(int argc)
 
 }
 
-int popFrame(int argc)
+int popFrame()
 {
 	int ret = -1;
 	gpStackTop = (char* )gpCurFrame;
-	gpStackTop -= SIZE_OF_ARGs(argc);
-	if(gpStackTop > gpStackBottom)
+
+	if(gpCurFrame->pPreFrame != NULL)
 	{
 		gpPC = gpCurFrame->PC;
-		gpCurFrame = gpCurFrame->pPreFrame;	
+		gpStackTop -= SIZE_OF_ARGs(gpCurFrame->argc);
+		gpCurFrame = gpCurFrame->pPreFrame;
+
 		ret = 0;
 	}
 
@@ -141,7 +144,8 @@ struct stack* initStack(int stackSize)
 			pStack->pStackTop = p;
 			pStack->pStackBottom = p;
 			pStack->pStack = p;
-			pStack->pCurFrame = (struct frame* )p;
+		
+			//pStack->pCurFrame = (struct frame* )p;
 		}
 		else
 		{

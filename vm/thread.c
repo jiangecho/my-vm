@@ -99,21 +99,6 @@ static struct thread* self()
 
 }
 
-void stop(struct thread* pthread)
-{
-	assert(pthread != NULL);
-	
-	if(pthread != pCurrentThread)
-	{
-	}
-
-
-}
-
-void stopSelf()
-{
-
-}
 
 void suspend(struct thread* pthread)
 {
@@ -145,12 +130,11 @@ struct thread* getNextReadyThread()
 	return pRet;
 }
 
-int switchToNextThread()
+struct thread* switchToNextThread()
 {
-	int ret = -1;
 	struct thread* p = getNextReadyThread();
 
-	if((p != NULL) && (p != pCurrentThread))
+	if(p != NULL)
 	{
 		gpPC = p->PC;
 		gpStackTop = p->pStack->pStackTop;
@@ -162,28 +146,76 @@ int switchToNextThread()
 		pCurrentThread = p;
 		pCurrentThread->status = RUNNING; 
 
-		ret = 0;
 	}
 	else
 	{
-		ret = -1;
 		printf("swtich thread error\n");
 	}
 
-	return ret;
+	return p;
 
 }
 
 //TODO should remove the destroyed pthread from the theadlist
 static void destroy(struct thread* pthread)
 {
-	assert(pthread != NULL);
+	struct thread* p = NULL;
 
+	assert(pthread != NULL);
 
 	if(pthread->pName != NULL)
 	{
 		//TODO maybe I need to implement this function in a method
 		free(pthread->pName);
 	}
+
 	destroyStack(pthread->pStack->pStackBottom);
+
+	p = pthreadList;
+	if(p->threadID == pthread->threadID)
+	{
+		if(p == p->next)
+		{
+			// the last thread has been killed
+			pthreadList = NULL;
+			pCurrentThread = NULL;
+		}
+
+	}
+	else
+	{
+		p = pthreadList->next;
+		while(p != pthreadList)
+		{
+			if(p->threadID == pthread->threadID)
+			{
+				p->prev->next = p->next;
+				p->next->prev = p->prev;
+
+				//attention, now p is the same as pthread
+				free(p);
+
+				break;
+			}
+			else
+			{
+				p = p->next;
+			}
+
+		}
+	}
+}
+
+void stop(struct thread* pthread)
+{
+	assert(pthread != NULL);
+
+	switchToNextThread();
+	destroy(pthread);
+
+}
+
+void stopSelf()
+{
+	stop(pCurrentThread);
 }

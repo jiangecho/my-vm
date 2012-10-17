@@ -80,6 +80,7 @@ short readWordValue(char** ppSrcCode)
 	return value;
 }
 
+//TODO delete this method
 int readDWordValue(char** ppSrcCode)
 {
 	char tmp[10];
@@ -159,7 +160,8 @@ Label* initLabel(char* pLabelName, int len, int addr)
 
 		pLabel->pLabelName = p;
 		pLabel->addr = addr;
-		pLabel->argc = 0;
+		pLabel->nVars = 0;
+		pLabel->pVars = NULL;
 		pLabel->next = NULL;
 	}
 	else 
@@ -315,17 +317,30 @@ void freeVars(Var* pVars)
 	
 }
 
-int addVar(Var* pVars, Var* pVar)
+int addVar(Label* pLabel, Var* pVar)
 {
-	assert((pVars != NULL) && (pVar != NULL));
-	
-	while(pVars->next != NULL)
-	{
-		pVars = pVars->next;
-	}
-	pVars->next = pVar;
-	pVars->next->next = NULL; // actually, we do not need this line
+	Var* p = NULL;
+	assert((pLabel != NULL) && (pVar != NULL));
 
+
+	if(pLabel->pVars == NULL)
+	{
+		pLabel->pVars = pVar;
+		pLabel->pVars->next = NULL;
+	}
+	else
+	{
+		p = pLabel->pVars;
+
+		while(p->next != NULL)
+		{
+			p = p->next;
+		}
+
+		p->next = pVar;
+		p->next->next = NULL;
+	}
+	
 	return 0;
 
 }
@@ -376,12 +391,12 @@ int findCallINSLabelAddr(CallINS* pCallINS, Label* pLabels)
 	return -1;
 }
 
-int haveDefined(Var* pVars, char* pVarName)
+static int haveDefined(Label* pLabel, char* pVarName)
 {
 	Var* pVar = NULL;
 	int ret = 0;
-	assert((pVars != NULL) && (pVarName != NULL));
-	pVar = pVars->next;
+	assert((pLabel != NULL) && (pVarName != NULL));
+	pVar = pLabel->pVars;
 	while(pVar != NULL)
 	{
 		if(strcmp(pVar->pName, pVarName) == 0)
@@ -397,6 +412,40 @@ int haveDefined(Var* pVars, char* pVarName)
 	}
 
 	return ret;
+}
+
+static int getVarIndex(Label* pLabel, char* pVarName)
+{
+	int index = 0;
+	int hasDefined = 0;
+	Var* pVar = NULL;
+
+	assert((pLabel != NULL) && (pVarName != NULL));
+	pVar = pLabel->pVars;
+
+	while(pVar != NULL)
+	{
+		if(strcmp(pVar->pName, pVarName) == 0)
+		{
+			hasDefined = 1;
+			break;
+		}
+		else
+		{
+			pVar = pVar->next;
+			index ++;
+		}
+	}
+
+	if(hasDefined)
+	{
+		return index;
+	}
+	else
+	{
+		return -1;
+	}
+
 }
 
 
@@ -424,13 +473,25 @@ void updateCallINSsLabelAddr(char* pTargetByteCodeStart, CallINS* pCallINSs, Lab
 
 }
 
-void updateLabelsArgc(char* pTargetByteCodeStart, Label* pLabels)
+void updateLabelsNVars(char* pTargetByteCodeStart, Label* pLabels)
 {
-	Label* pLabel = pLabels->next;
+	Label* pLabel = NULL;
+	Var* pVars = NULL;
+	int n = 0; 
+	
+	assert((pTargetByteCodeStart != NULL) && (pLabels != NULL) && (pLabels->next != NULL));
+	pLabel = pLabels->next;
 	
 	while(pLabel != NULL)
 	{
-		*(pTargetByteCodeStart + pLabel->addr) = (char)(pLabel->argc);
+		pVars = pLabel->pVars;
+		while(pVars != NULL)
+		{
+			n ++;
+			pVars = pVars->next;
+		}
+		*(pTargetByteCodeStart + pLabel->addr) = (char)n;
+		n = 0;
 		pLabel = pLabel->next;
 	}
 
@@ -452,7 +513,6 @@ int parse(char* pSrcCode, char* ptargetByteCode)
 
 	Label* pLabels = initLabel(NULL, 0, 0);
 	CallINS* pCallINSs = initCallINS(0, NULL, 0);
-	Var* pVars = initVar(0, NULL, 0);
 
 
 	*ptargetByteCode ++ = 'B';
@@ -534,11 +594,10 @@ int parse(char* pSrcCode, char* ptargetByteCode)
 			{
 				eatWhiteSpaces(&pSrcCode);
 				varNameLen = getSting(&pSrcCode, varName);
-				if(!haveDefined(pVars, varName))
+				if(!haveDefined(pLabel, varName))
 				{
-					++(pLabel->argc);
 					pVar = initVar(0, varName, varNameLen);
-					addVar(pVars, pVar);
+					addVar(pLabel, pVar);
 					printf("define %s\n", varName);
 
 					memset(varName, '\0', MAX_VAR_LEN);
@@ -549,6 +608,55 @@ int parse(char* pSrcCode, char* ptargetByteCode)
 					return HAVE_DEFINED;
 				}
 			}
+			else if(!strcasecmp(mneumonic, "ISTORE"))
+			{
+				int index = getVarIndex(pLabel, varName);
+
+				eatWhiteSpaces(&pSrcCode);
+				varNameLen = getSting(&pSrcCode, varName);
+				//if(!haveDefined(pLabel, varName))
+				//{
+				//	printf("%s has not been define\n", varName);
+				//	return(HAVE_NOT_DEFINED);
+				//}
+				//else
+				//{
+				//	int index = getVarIndex(pLabel, varName);
+				//	//...
+
+				//}
+
+				index = getVarIndex(pLabel, varName);
+
+				*ptargetByteCode++ = (char)ISTORE;
+				if(index < 0)
+				{
+					printf("%s has not been define\n", varName);
+					return(HAVE_NOT_DEFINED);
+				}
+				else
+				{
+					*ptargetByteCode++ = (char)index;
+				}
+			}
+			else if(!strcasecmp(mneumonic, "ILOAD"))
+			{
+				int index = -1;
+				eatWhiteSpaces(&pSrcCode);
+				varNameLen = getSting(&pSrcCode, varName);
+				index = getVarIndex(pLabel, varName);
+
+				*ptargetByteCode++ = (char)ILOAD;
+				if(index < 0)
+				{
+					printf("%s has not been define\n", varName);
+					return(HAVE_NOT_DEFINED);
+				}
+				else
+				{
+					*ptargetByteCode++ = (char)index;
+				}
+			}
 
 
 			moveToNextLine(&pSrcCode);
@@ -557,7 +665,7 @@ int parse(char* pSrcCode, char* ptargetByteCode)
 	}
 
 	updateCallINSsLabelAddr(ptargetByteCodeStart, pCallINSs, pLabels);
-	updateLabelsArgc(ptargetByteCodeStart, pLabels);
+	updateLabelsNVars(ptargetByteCodeStart, pLabels);
 
 	freeLabels(pLabels);
 	freeCallINSs(pCallINSs);

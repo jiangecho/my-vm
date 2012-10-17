@@ -60,6 +60,7 @@ int loadByteFrom(char* p)
 int pushFrame(int argc)
 {
 	struct frame* pFrame;
+	int len = SIZE_OF_ARGs(argc);
 
 	//TODO implement the following line in macro
 	//if((gpStackTop - gpStackBottom) < sizeof(struct frame))
@@ -69,7 +70,8 @@ int pushFrame(int argc)
 		return -1;
 	}
 
-	gpStackTop += SIZE_OF_ARGs(argc);
+	memset(gpStackTop, 0, len);
+	gpStackTop += len;
 
 	pFrame = (struct frame* )gpStackTop;
 	pFrame->PC = gpPC;
@@ -97,6 +99,7 @@ int popFrame(int argc)
 	return ret;
 }
 
+//TODO shoule add some judgement here to avoid stack overfollow ?
 void pushI(int value)
 {
 	storeDWordTo(gpStackTop, value);

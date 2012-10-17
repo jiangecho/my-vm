@@ -5,12 +5,13 @@ Start
 	INT		bc
 	INT		c
 	ISTORE	abc
+	ILOAD	bc
 	ADD
 	RET_I
-
 fun
 	INT AA
 	INT BB
+	INT BiB
 	ICONST	100
 	ICONST	100
 	ADD

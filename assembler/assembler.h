@@ -18,7 +18,7 @@ typedef struct label{
 	char* pLabelName;
 	Var* pVars;
 	int addr;
-	int argc;
+	int nVars;
 	struct label* next;
 }Label;
 
@@ -50,7 +50,7 @@ Var* initVar(int type, char* pVarName, int len);
 
 int addLabel(Label* pLabels, Label* pLabel);
 int addCallINS(CallINS* pCallINSs, CallINS* pCallINS);
-int addVar(Var* pVars, Var* pVar);
+int addVar(Label* pLabel, Var* pVar);
 int findCallINSLabelAddr(CallINS* pCallINS, Label* pLabels);
 void updateCallINSsLabelAddr(char* pTargetByteCodeStart, CallINS* pCallINSs, Label* pLabels);
 void updateLabelsArgc(char* pTargetByteCodeStart, Label* pLabels);

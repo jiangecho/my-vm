@@ -60,20 +60,20 @@ int initVm(int stackSize)
 	}
 	else
 	{
-		//TODO now the main method do not support any args.
-		sargc = 0;
+		sargc = *gpPC ++;
 		stackSize = (stackSize > MAX_STACK_SIZE) ? MAX_STACK_SIZE : stackSize;
 		p = initStack(stackSize);
 		if(p != NULL)
 		{
 			gpStackBottom = p->pStackBottom;
 			gpStackTop = p->pStackTop;
+			gpCurFrame = NULL;// we will init it in method pushFrame
 
 			if(pushFrame(sargc) == 0)
 			{
 				//TODO the main method does not have any arguments
 				//gpCurFrame = (struct frame* )p;
-				gpCurFrame = p->pCurFrame;
+				//gpCurFrame = p->pCurFrame;
 				ret = 0;
 			}
 
@@ -220,13 +220,14 @@ static help()
 int main(int argc, char** argv)
 {
 	char* p = NULL;
-	if(argc < 2)
-	{
-		help();
-		return -1;
-	}
+	//if(argc < 2)
+	//{
+	//	help();
+	//	return -1;
+	//}
 
-	p = loadByteCode(*(argv + 1));
+	//p = loadByteCode(*(argv + 1));
+	p = loadByteCode("test.bbc");
 	if(p != NULL )
 	{
 		gpBCStart = p; // the first three bytes are magic numbers, and we do not check it here

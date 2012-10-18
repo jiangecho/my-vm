@@ -9,6 +9,7 @@
 
 struct frame{
 	char* PC;
+	int argc; // the count of arguments of the current method
 	struct frame* pPreFrame;
 };
 
@@ -22,7 +23,7 @@ typedef struct stack{
 
 // return the current Fp
 int pushFrame(int argc);
-int popFrame(int argc);
+int popFrame();
 
 void storeDWordTo(char* p, int value);
 int loadDWordFrom(char* p);

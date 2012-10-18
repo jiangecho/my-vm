@@ -5,6 +5,7 @@
 
 #include "../common/opCode.h"
 #include "stack.h"
+#include "thread.h"
 
 #define MAX_FILE_LENGTH 10000
 
@@ -15,6 +16,9 @@ char* gpPC;
 char* gpBCStart;
 struct frame* gpCurFrame;
 static int sargc;
+
+static int pcCount = 0;
+
 
 char* loadByteCode(char* pPath)
 {
@@ -54,6 +58,7 @@ int initVm(int stackSize)
 {
 	int ret = -1;
 	struct stack* p = NULL;
+	struct thread* pthread = NULL;
 	if(stackSize <= 0)
 	{
 		ret = -1;
@@ -62,12 +67,14 @@ int initVm(int stackSize)
 	{
 		sargc = *gpPC ++;
 		stackSize = (stackSize > MAX_STACK_SIZE) ? MAX_STACK_SIZE : stackSize;
-		p = initStack(stackSize);
-		if(p != NULL)
+		// create the main thread;
+		pthread = create(NULL, stackSize, 0, gpPC, NULL);
+		if(pthread != NULL)
 		{
-			gpStackBottom = p->pStackBottom;
-			gpStackTop = p->pStackTop;
+			gpStackBottom = pthread->pStack->pStackBottom;
+			gpStackTop = pthread->pStack->pStackTop;
 			gpCurFrame = NULL;// we will init it in method pushFrame
+
 
 			if(pushFrame(sargc) == 0)
 			{
@@ -87,6 +94,7 @@ int initVm(int stackSize)
 	return ret;
 }
 
+// if support multi-thread, we should release each thread's resource
 void abortVm()
 {
 	destroyStack(gpStackBottom);
@@ -110,17 +118,16 @@ int interpret(char* pPC)
 	//TODO implement the interpret in threaded interpret
 	while(!gameOver)
 	{
+		if(pcCount++ > 3)
+		{
+			pcCount = 0;
+			switchToNextThread();
+		}
+
 		switch(*gpPC++)
 		{
 case ICONST:
 	{
-//	int value = (int)(*(gpPC))
-//				| ((int)(*(gpPC + 1)) << 8)
-//				| ((int)(*(gpPC + 2)) << 16)
-//				| ((int)(*(gpPC + 3)) << 24);
-//
-//	pushI(value);
-//	gpPC += 4;
 
 		*gpStackTop ++ = *gpPC ++;
 		*gpStackTop ++ = *gpPC ++;
@@ -159,7 +166,7 @@ case CALL:
 	}
 	break;
 case RET_V:
-	if(popFrame(sargc) < 0)
+	if(popFrame() < 0)
 	{
 		gameOver = 1;
 	}
@@ -171,7 +178,7 @@ case RET_I:
 		int value = popI();
 		printf("RET_I:%d\n", value);
 
-		if(popFrame(sargc) < 0)
+		if(popFrame() < 0)
 		{
 			gameOver = 1;
 		}

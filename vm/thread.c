@@ -17,7 +17,8 @@ static int lowestID = 0;
 struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char* pName)
 {
 	struct thread* p = NULL;
-	assert((pMethod != NULL) && (PC != NULL));
+	//assert((pMethod != NULL) && (PC != NULL));
+	assert(PC != NULL);
 
 	p = (struct thread* )malloc(sizeof(struct thread));
 
@@ -44,6 +45,11 @@ struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char
 		return NULL;
 	}
 
+	if(pCurrentThread == NULL)
+	{
+		pCurrentThread = p;
+	}
+
 	if(pthreadList != NULL)
 	{
 		pthreadList->next = p;
@@ -56,22 +62,36 @@ struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char
 		pthreadList->prev = p;
 	}
 
+	printf("cread thread: %d\n", p->threadID);
 	return p;
 }
 
 int start(struct thread* pthread)
 {
 	int ret = -1;
+	assert(pthread != NULL);
+
 	if(pthread != pCurrentThread)
 	{
-		//TODO
+		if(pCurrentThread != NULL)
+		{
+			//backup current thread's state
+			pCurrentThread->status = READY;
+			pCurrentThread->PC = gpPC;
+			pCurrentThread->pStack->pStackTop = gpStackTop;
+			pCurrentThread->pStack->pStackBottom = gpStackBottom;
+			pCurrentThread->pStack->pCurFrame = gpCurFrame;
+		}
+
+
+		//recover from the next ready thread
 		gpPC = pthread->PC;
 		gpStackTop = pthread->pStack->pStackTop;
 		gpStackBottom = pthread->pStack->pStackBottom;
 		gpCurFrame = pthread->pStack->pCurFrame;
 
-		pthread->status = RUNNING;
-
+		pCurrentThread = pthread;
+		pCurrentThread->status = RUNNING; 
 		ret = 0;
 	}
 	else
@@ -136,16 +156,7 @@ struct thread* switchToNextThread()
 
 	if(p != NULL)
 	{
-		gpPC = p->PC;
-		gpStackTop = p->pStack->pStackTop;
-		gpStackBottom = p->pStack->pStackBottom;
-		gpCurFrame = p->pStack->pCurFrame;
-
-		
-		pCurrentThread->status = READY;
-		pCurrentThread = p;
-		pCurrentThread->status = RUNNING; 
-
+		start(p);
 	}
 	else
 	{

@@ -71,16 +71,11 @@ int initVm(int stackSize)
 		pthread = create(NULL, stackSize, 0, gpPC, NULL);
 		if(pthread != NULL)
 		{
-			gpStackBottom = pthread->pStack->pStackBottom;
-			gpStackTop = pthread->pStack->pStackTop;
-			gpCurFrame = NULL;// we will init it in method pushFrame
+			start(pthread);
 
-
+			//gpCurFrame will be updated in pushFrame
 			if(pushFrame(sargc) == 0)
 			{
-				//TODO the main method does not have any arguments
-				//gpCurFrame = (struct frame* )p;
-				//gpCurFrame = p->pCurFrame;
 				ret = 0;
 			}
 
@@ -163,6 +158,20 @@ case CALL:
 		pushFrame(sargc);
 		//TODO there is something wrong here
 		gpPC = gpBCStart + targetAddr;
+	}
+	break;
+case THREAD:
+	{
+		int targetAddr = loadDWordFrom(gpPC);
+		struct thread* pthread = NULL;
+
+		gpPC = gpBCStart + targetAddr;
+		pthread = create(NULL, MAX_STACK_SIZE, 1, gpPC, NULL);
+		start(pthread);
+		//now, the first byte of one method is the count of arguments.
+		sargc = (int)(*(gpBCStart + targetAddr));
+		pushFrame(sargc);
+
 	}
 	break;
 case RET_V:

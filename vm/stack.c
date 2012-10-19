@@ -145,7 +145,7 @@ struct stack* initStack(int stackSize)
 			pStack->pStackBottom = p;
 			pStack->pStack = p;
 		
-			//pStack->pCurFrame = (struct frame* )p;
+			pStack->pCurFrame = NULL;// it will be updated in pushFrame
 		}
 		else
 		{

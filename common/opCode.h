@@ -15,5 +15,6 @@
 #define RET_I		0x0a
 
 #define INT			0x0b
+#define THREAD		0x0c
 
 #endif

@@ -577,9 +577,16 @@ int parse(char* pSrcCode, char* ptargetByteCode)
 			{
 				*ptargetByteCode++ = (char)RET_I;
 			}
-			else if(!strcasecmp(mneumonic, "CALL"))
+			else if(!strcasecmp(mneumonic, "CALL") || !strcasecmp(mneumonic, "THREAD"))
 			{
-				*ptargetByteCode++ = (char)CALL;
+				if(!strcasecmp(mneumonic, "CALL"))
+				{
+					*ptargetByteCode++ = (char)CALL;
+				}
+				else
+				{
+					*ptargetByteCode++ = (char)THREAD;
+				}
 
 				eatWhiteSpaces(&pSrcCode);
 				labelNameLen = getSting(&pSrcCode, labelName);

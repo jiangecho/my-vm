@@ -97,7 +97,7 @@ int start(struct thread* pthread)
 	else
 	{
 		ret = -1;
-		printf("thread %s is runing\n" ,pthread->pName);
+		printf("thread %d is runing\n" ,pthread->threadID);
 	}
 
 	return ret;

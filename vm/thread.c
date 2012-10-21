@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 extern char* gpStackTop;
@@ -16,7 +17,11 @@ static int lowestID = 0;
 
 struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char* pName)
 {
+	int argc = *PC++;
+	int len = SIZE_OF_ARGs(argc);
 	struct thread* p = NULL;
+	struct frame* pFrame = NULL;
+
 	//assert((pMethod != NULL) && (PC != NULL));
 	assert(PC != NULL);
 
@@ -35,7 +40,20 @@ struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char
 
 		p->pStack = initStack(stackSize);
 		
-		if(p->pStack == NULL)
+		if(p->pStack != NULL)
+		{
+
+			memset(p->pStack->pStackTop, 0, len);
+			(p->pStack)->pStackTop += len;
+
+			pFrame = (struct frame* )p->pStack->pStackTop;
+			pFrame->PC = NULL;
+			pFrame->argc = argc;
+			pFrame->pPreFrame = NULL;
+
+			p->pStack->pCurFrame = pFrame;
+		}
+		else
 		{
 			return NULL;
 		}
@@ -45,15 +63,21 @@ struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char
 		return NULL;
 	}
 
-	if(pCurrentThread == NULL)
-	{
-		pCurrentThread = p;
-	}
-
+//	if(pCurrentThread == NULL)
+//	{
+//		pCurrentThread = p;
+//	}
 	if(pthreadList != NULL)
 	{
-		pthreadList->next = p;
+		p->next = pthreadList->next;
 		p->prev = pthreadList;
+		pthreadList->next->prev = p;
+		pthreadList->next = p;
+
+//		pthreadList->next = p;
+//		pthreadList->prev = p;
+//		p->prev = pthreadList;
+//		p->next = pthreadList;
 	}
 	else
 	{
@@ -62,7 +86,7 @@ struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char
 		pthreadList->prev = p;
 	}
 
-	printf("cread thread: %d\n", p->threadID);
+	printf("create thread: %d\n", p->threadID);
 	return p;
 }
 
@@ -157,6 +181,7 @@ struct thread* switchToNextThread()
 	if(p != NULL)
 	{
 		start(p);
+		printf("swtich to %d\n", p->threadID);
 	}
 	else
 	{

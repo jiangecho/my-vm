@@ -65,20 +65,15 @@ int initVm(int stackSize)
 	}
 	else
 	{
-		sargc = *gpPC ++;
 		stackSize = (stackSize > MAX_STACK_SIZE) ? MAX_STACK_SIZE : stackSize;
 		// create the main thread;
 		pthread = create(NULL, stackSize, 0, gpPC, NULL);
 		if(pthread != NULL)
 		{
-			start(pthread);
-
-			//gpCurFrame will be updated in pushFrame
-			if(pushFrame(sargc) == 0)
+			if(start(pthread) == 0)
 			{
 				ret = 0;
 			}
-
 		}
 		else
 		{
@@ -168,9 +163,6 @@ case THREAD:
 		gpPC = gpBCStart + targetAddr;
 		pthread = create(NULL, MAX_STACK_SIZE, 1, gpPC, NULL);
 		start(pthread);
-		//now, the first byte of one method is the count of arguments.
-		sargc = (int)(*(gpBCStart + targetAddr));
-		pushFrame(sargc);
 
 	}
 	break;

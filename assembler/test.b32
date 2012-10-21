@@ -1,20 +1,22 @@
 Start
 	ICONST	100
 	ICONST	200
-	INT		abc
-	INT		bc
-	INT		c
-	ISTORE	abc
-	ILOAD	bc
+	NOP
+	NOP
+	NOP
+	NOP
 	ADD
 	THREAD  fun
 	RET_I
 fun
-	INT AA
-	INT BB
-	INT BiB
 	ICONST	100
 	ICONST	100
 	ADD
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	RET_I
 

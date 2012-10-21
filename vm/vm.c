@@ -17,6 +17,7 @@ char* gpBCStart;
 struct frame* gpCurFrame;
 static int sargc;
 
+static int threadCount = 0;
 static int pcCount = 0;
 
 
@@ -68,6 +69,7 @@ int initVm(int stackSize)
 		stackSize = (stackSize > MAX_STACK_SIZE) ? MAX_STACK_SIZE : stackSize;
 		// create the main thread;
 		pthread = create(NULL, stackSize, 0, gpPC, NULL);
+		threadCount++;
 		if(pthread != NULL)
 		{
 			if(start(pthread) == 0)
@@ -108,7 +110,7 @@ int interpret(char* pPC)
 	//TODO implement the interpret in threaded interpret
 	while(!gameOver)
 	{
-		if(pcCount++ > 3)
+		if((threadCount > 1) && (pcCount++ > 3))
 		{
 			pcCount = 0;
 			switchToNextThread();
@@ -160,8 +162,10 @@ case THREAD:
 		int targetAddr = loadDWordFrom(gpPC);
 		struct thread* pthread = NULL;
 
-		gpPC = gpBCStart + targetAddr;
-		pthread = create(NULL, MAX_STACK_SIZE, 1, gpPC, NULL);
+		//gpPC = gpBCStart + targetAddr;
+		gpPC += 4; 
+		pthread = create(NULL, MAX_STACK_SIZE, 1, gpBCStart + targetAddr, NULL);
+		threadCount++;
 		start(pthread);
 
 	}
@@ -169,7 +173,17 @@ case THREAD:
 case RET_V:
 	if(popFrame() < 0)
 	{
-		gameOver = 1;
+		//TODO we should destory the current thread here.
+		destroy(self());
+		threadCount--;
+		if(switchToNextThread() != NULL)
+		{
+			pcCount = 0;
+		}
+		else
+		{
+			gameOver = 1;
+		}
 	}
 	sargc = 0;
 	break;
@@ -177,11 +191,22 @@ case RET_V:
 case RET_I:
 	{
 		int value = popI();
-		printf("RET_I:%d\n", value);
+		printf("RET_I: %d, threadID: %d\n", value, self()->threadID);
 
 		if(popFrame() < 0)
 		{
-			gameOver = 1;
+			//TODO we should destory the current thread here.
+			destroy(self());
+			threadCount--;
+
+			if(switchToNextThread() != NULL)
+			{
+				pcCount = 0;
+			}
+			else
+			{
+				gameOver = 1;
+			}
 		}
 		else
 		{

@@ -95,9 +95,14 @@ int start(struct thread* pthread)
 	int ret = -1;
 	assert(pthread != NULL);
 
-	if(pthread != pCurrentThread)
+	if((pthread == pCurrentThread) && (pCurrentThread->status == RUNNING))
 	{
-		if(pCurrentThread != NULL)
+		ret = -1;
+		printf("thread %d is running\n" ,pthread->threadID);
+	}
+	else
+	{
+		if((pCurrentThread != NULL) && (pthread != pCurrentThread))
 		{
 			//backup current thread's state
 			pCurrentThread->status = READY;
@@ -118,11 +123,6 @@ int start(struct thread* pthread)
 		pCurrentThread->status = RUNNING; 
 		ret = 0;
 	}
-	else
-	{
-		ret = -1;
-		printf("thread %d is runing\n" ,pthread->threadID);
-	}
 
 	return ret;
 }
@@ -137,7 +137,7 @@ static void removeThread(struct thread* pthread)
 
 }
 
-static struct thread* self()
+struct thread* self()
 {
 	return pCurrentThread;
 
@@ -155,8 +155,15 @@ void resume(struct thread* pthread)
 
 struct thread* getNextReadyThread()
 {
-	struct thread* p = pCurrentThread->next;
-	struct thread* pRet = NULL;
+	struct thread* p = NULL;
+	struct thread* pRet = pCurrentThread;
+
+	if(pCurrentThread == NULL)
+	{
+		return NULL;
+	}
+
+	p = pCurrentThread->next;
 
 	while(p != pCurrentThread)
 	{
@@ -193,7 +200,7 @@ struct thread* switchToNextThread()
 }
 
 //TODO should remove the destroyed pthread from the theadlist
-static void destroy(struct thread* pthread)
+void destroy(struct thread* pthread)
 {
 	struct thread* p = NULL;
 
@@ -208,14 +215,27 @@ static void destroy(struct thread* pthread)
 	destroyStack(pthread->pStack->pStackBottom);
 
 	p = pthreadList;
-	if(p->threadID == pthread->threadID)
+	if((p->threadID == pthread->threadID) && (p == p->next))
 	{
-		if(p == p->next)
-		{
-			// the last thread has been killed
-			pthreadList = NULL;
-			pCurrentThread = NULL;
-		}
+		// the last thread has been killed
+		printf("destroy the last thread %d\n", p->threadID);
+		pthreadList = NULL;
+		pCurrentThread = NULL;
+
+		free(p);
+
+	}
+	else if(p->threadID == pthread->threadID)
+	{
+		printf("destroy thread %d\n", p->threadID);
+		pCurrentThread = p->next;
+
+		pthreadList->next->prev = pthreadList->prev; 
+		pthreadList->prev->next = pthreadList->next;
+
+		free(p);
+
+		pthreadList = pCurrentThread;
 
 	}
 	else
@@ -225,6 +245,10 @@ static void destroy(struct thread* pthread)
 		{
 			if(p->threadID == pthread->threadID)
 			{
+				printf("destroy thread %d\n", p->threadID);
+
+				pCurrentThread = p->next;
+
 				p->prev->next = p->next;
 				p->next->prev = p->prev;
 

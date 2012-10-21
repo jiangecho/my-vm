@@ -24,7 +24,8 @@ struct thread{
 };
 
 struct thread* create(char* pMethod, int stackSize, int priority, char* PC, char* pName);
-//void destroy(struct thread* pthread);
+struct thread* self();
+void destroy(struct thread* pthread);
 struct thread* getNextReadyThread();
 int start(struct thread* pthread);
 void stop(struct thread* pthread);
@@ -33,5 +34,6 @@ void suspend(struct thread* pthread);
 void resume(struct thread* pthread);
 
 struct thread* getNextReadyThread();
+struct thread* switchToNextThread();
 
 #endif
